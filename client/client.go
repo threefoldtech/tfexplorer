@@ -44,6 +44,8 @@ type (
 		FarmList(tid schema.ID, name string, page *Pager) (farms []directory.Farm, err error)
 		FarmGet(id schema.ID) (farm directory.Farm, err error)
 		Farms(cacheSize int) FarmIter
+		FarmAddIP(id schema.ID, ip directory.PublicIP) error
+		FarmDeleteIP(id schema.ID, ip schema.IPCidr) error
 
 		GatewayRegister(Gateway directory.Gateway) error
 		GatewayList(tid schema.ID, name string, page *Pager) (farms []directory.Gateway, err error)

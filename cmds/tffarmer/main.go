@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -34,31 +36,51 @@ func main() {
 			Value: "user.seed",
 		},
 		cli.StringFlag{
-			Name:   "bcdb, b",
-			Usage:  "URL of the BCDB",
-			Value:  "https://explorer.devnet.grid.tf/explorer",
+			Name:   "explorer, e",
+			Usage:  "URL of the Explorer",
+			Value:  "https://explorer.grid.tf/api/v1",
 			EnvVar: "BCDB_URL",
 		},
 	}
 
 	app.Before = func(c *cli.Context) error {
 		var err error
-
 		debug := c.Bool("debug")
 		if !debug {
 			zerolog.SetGlobalLevel(zerolog.InfoLevel)
 		}
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
+		url := c.String("explorer")
+		// check seed file in ~/.config/tffarmer/user.seed
 		err = userid.Load(c.String("seed"))
 		if err != nil {
-			return err
+			defaultSeedLocation, err := getSeedPath()
+			if err != nil {
+				return err
+			}
+			err = userid.Load(defaultSeedLocation)
+			if err != nil {
+				// Seed not found in default location ~/.config/tffarmer.seed
+				generateSeedOption := "n"
+				fmt.Print("Seed not provided. Do you want to generate a new seed? [y/n] ")
+				fmt.Scanln(&generateSeedOption)
+				if generateSeedOption == "n" {
+					return err
+				}
+				userid, err = generateNewUser(c, url, defaultSeedLocation)
+				if err != nil {
+					return err
+				}
+			} else {
+				fmt.Printf("User seed found at %s and will be used\n", defaultSeedLocation)
+			}
+
 		}
 
-		url := c.String("bcdb")
 		cl, err := client.NewClient(url, userid)
 		if err != nil {
-			return errors.Wrap(err, "failed to create client to bcdb")
+			return errors.Wrap(err, "failed to create client to explorer")
 		}
 
 		db = cl.Directory
@@ -122,6 +144,54 @@ func main() {
 						},
 					},
 					Action: updateFarm,
+				},
+				{
+					Name:     "addip",
+					Usage:    "add Ip addresses to farm",
+					Category: "identity",
+					Flags: []cli.Flag{
+						cli.Int64Flag{
+							Name:     "id",
+							Usage:    "farm ID",
+							Required: true,
+						},
+						cli.StringFlag{
+							Name:     "address",
+							Usage:    "IP address",
+							Required: true,
+						},
+						cli.StringSliceFlag{
+							Name:     "gateway",
+							Usage:    "gateway address",
+							Required: true,
+						},
+					},
+					Action: addIP,
+				},
+				{
+					Name:     "deleteip",
+					Usage:    "delete Ip addresses from farm",
+					Category: "identity",
+					Flags: []cli.Flag{
+						cli.Int64Flag{
+							Name:     "id",
+							Usage:    "farm ID",
+							Required: true,
+						},
+						cli.StringFlag{
+							Name:     "address",
+							Usage:    "IP address",
+							Required: true,
+						},
+					},
+					Action: deleteIP,
+				},
+				{
+					Name:     "list",
+					Usage:    "list farms",
+					Category: "identity",
+					Flags:    []cli.Flag{},
+					Action:   listFarms,
 				},
 			},
 		},

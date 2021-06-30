@@ -224,3 +224,25 @@ func (c *httpClient) delete(u string, query url.Values, output interface{}, expe
 
 	return response, c.process(response, output, expect...)
 }
+
+func (c *httpClient) deleteWithBody(u string, input interface{}, output interface{}, expect ...int) (*http.Response, error) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(input); err != nil {
+		return nil, errors.Wrap(err, "failed to serialize request body")
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, u, &buf)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create new HTTP request")
+	}
+
+	if err := c.sign(req); err != nil {
+		return nil, errors.Wrap(err, "failed to sign HTTP request")
+	}
+	response, err := c.cl.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(ErrRequestFailure, "reason: %s", err)
+	}
+
+	return response, c.process(response, output, expect...)
+}

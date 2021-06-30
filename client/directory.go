@@ -69,6 +69,15 @@ func (d *httpDirectory) FarmGet(id schema.ID) (farm directory.Farm, err error) {
 	return
 }
 
+func (d *httpDirectory) FarmAddIP(id schema.ID, ip directory.PublicIP) error {
+	_, err := d.post(d.url("farms", fmt.Sprintf("%d/ip", id)), []directory.PublicIP{ip}, nil, http.StatusOK)
+	return err
+}
+func (d *httpDirectory) FarmDeleteIP(id schema.ID, ipaddr schema.IPCidr) error {
+	_, err := d.deleteWithBody(d.url("farms", fmt.Sprintf("%d/ip", id)), []schema.IPCidr{ipaddr}, nil, http.StatusOK)
+	return err
+}
+
 func (d *httpDirectory) Farms(cacheSize int) FarmIter {
 	// pages start at index 1
 	return &httpFarmIter{cl: d, size: cacheSize, page: 1}
